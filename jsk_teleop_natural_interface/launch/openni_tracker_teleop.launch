@@ -1,0 +1,9 @@
+<launch>
+  <!-- openni related node and launch -->
+  <node pkg="openni_tracker" type="openni_tracker" name="openni_tracker"/>
+  <include file="$(find openni_launch)/launch/openni.launch">
+  </include>
+
+  <!-- calulate spline and apply the robot condition -->
+  <!-- now implementing... -->
+</launch>
