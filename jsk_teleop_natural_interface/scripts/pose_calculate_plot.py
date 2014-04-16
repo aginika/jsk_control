@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import interpolate
 import random
+import types
 
 #test Values
 test_x = [0,1,3,7,5]
@@ -31,6 +32,9 @@ class BoneToCurve:
 
     def get_spline_result(self):
         return self.spline_result
+
+    def get_spline_function(self):
+        return self.spline_f
 
     def register_option_plot_line(self, label, points):
         self.option_plot_dict_array[label] = points
@@ -94,6 +98,8 @@ class SearchOptimizedFittedArm:
     def __init__(self,search_origin_pos,link_length_array):
         self.search_origin_pos = search_origin_pos
         self.link_length_array = link_length_array
+
+        self.threshold_spline = 0.1
         print "Init SearchOptimizedFitted Arm with"
         print "             search_origin_pos : ",self.search_origin_pos
         print "             link_length_array : ",self.link_length_array
@@ -101,6 +107,12 @@ class SearchOptimizedFittedArm:
     def solve(self, target_line, mode = 1):
         if mode == 1:
             return self.base_solver(target_line)
+        elif mode == 2:
+            # if types.FunctionType != type(target_line):
+            #     print "Set spline_function solve(target_line, spline_function)"
+            #     return None
+            # else:
+            return self.base_spline_solver(target_line)
         else:
             print "Invalid Mode Setted!!!"
 
@@ -111,15 +123,14 @@ class SearchOptimizedFittedArm:
         #we want the arm which is as far from other arm as possible
         vector_evaluate_bias = np.array([0,0,0])
 
-        for num in range(len(self.link_length_array)):
+        for link_length in self.link_length_array:
             diff_vector = np.array(target_line[0]) - tmp_search_origin_pos
             euclid_dist_min = float("inf")
 
             dist_min_index = -1
-            print "link_length_list : ", self.link_length_array[num]
             for i in range(len(target_line)):
                 diff_vector = np.array(target_line[i]) - tmp_search_origin_pos
-                diff_vector_norm = abs(np.linalg.norm(diff_vector, ord=1) - self.link_length_array[num])
+                diff_vector_norm = abs(np.linalg.norm(diff_vector, ord=1) - link_length)
 
                 #add the bias which is calculated from vector inner product
                 diff_vector_norm -= np.dot(diff_vector, vector_evaluate_bias)
@@ -135,14 +146,48 @@ class SearchOptimizedFittedArm:
             tmp_search_origin_pos = target_line[dist_min_index]
         return result_points
 
+
+    def base_spline_solver(self ,spline_function):
+        result_points = [self.search_origin_pos]
+        spline_t_value = 0
+
+        for link_length in self.link_length_array:
+            tmp_search_origin_pos = np.array(spline_function(spline_t_value))
+            euclid_dist_min = float("inf")
+            prev_length = link_length
+
+            for t_value in np.linspace(spline_t_value, len(spline_function.x)-1, 1000*(float(len(spline_function.x)-1) - spline_t_value)):
+                diff_vector = np.array(spline_function(t_value)) - tmp_search_origin_pos
+                diff_vector_norm = abs(np.linalg.norm(diff_vector, ord=1) - link_length)
+
+                # print "t_vale: ",t_value, " diff_vector_norm : ",diff_vector_norm," prev_length : ", prev_length
+                euclid_dist_min = min(diff_vector_norm, euclid_dist_min)
+
+                if prev_length < diff_vector_norm and euclid_dist_min < self.threshold_spline:
+                    spline_t_value = t_value
+                    result_points += [list(spline_function(t_value))]
+                    break
+
+                prev_length = diff_vector_norm
+
+        return result_points
+
+
 if __name__ == "__main__":
     test_bone_convert = BoneToCurve()
     test_bone_convert.set_pos(test_x, test_y, test_z)
     test_bone_convert.calc_interpolation()
 
-    test_search = SearchOptimizedFittedArm([0,0,0], [3,4,3,2,3,4,2,4])
-    get_approx_result = test_search.solve(test_bone_convert.get_spline_result().T)
+    test_search1 = SearchOptimizedFittedArm([0,0,0], [3,4,3,2,3,4,2,4])
+    #    get_approx_result = test_search.solve(test_bone_convert.get_spline_result().T, mode = 1)
+    get_approx_result1 = test_search1.solve(test_bone_convert.get_spline_function(), mode = 2)
 
-    print "get_approx_result : ",np.array(get_approx_result).T
-    test_bone_convert.register_option_plot_line("approx_result", np.array(get_approx_result).T)
+    test_search2 = SearchOptimizedFittedArm([0,0,0], [5,4,2,5,4,2,3])
+    get_approx_result2 = test_search2.solve(test_bone_convert.get_spline_function(), mode = 2)
+
+
+    print "get_approx_result : ",np.array(get_approx_result1).T
+    print "get_approx_result2: ",np.array(get_approx_result2).T
+    test_bone_convert.register_option_plot_line("approx_result1", np.array(get_approx_result1).T)
+    test_bone_convert.register_option_plot_line("approx_result2", np.array(get_approx_result2).T)
     test_bone_convert.plot()
