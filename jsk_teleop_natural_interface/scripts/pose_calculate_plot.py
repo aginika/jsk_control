@@ -128,8 +128,8 @@ class SearchOptimizedFittedArm:
                     euclid_dist_min = diff_vector_norm
 
             #set the next search origin_pos
-            print "target_line[i] and i : ", target_line[dist_min_index], "    ",i," minumum value = ",euclid_dist_min
-            print "result_points : ",result_points
+            print "target_line[i] and i : ", target_line[dist_min_index], "    ",dist_min_index," minumum value = ",euclid_dist_min
+            #            print "result_points : ",result_points
             result_points += [list(target_line[dist_min_index])]
             vector_evaluate_bias = target_line[dist_min_index] - tmp_search_origin_pos
             tmp_search_origin_pos = target_line[dist_min_index]
