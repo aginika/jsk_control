@@ -2,6 +2,7 @@
   <!-- openni related node and launch -->
   <node pkg="openni_tracker" type="openni_tracker" name="openni_tracker"/>
   <include file="$(find openni_launch)/launch/openni.launch">
+    <param name="camera" value="openni"/>
   </include>
 
   <!-- calulate spline and apply the robot condition -->

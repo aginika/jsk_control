@@ -50,7 +50,7 @@ class BoneToCurve:
             for label,points in self.option_plot_dict_array.items():
                 print "plot : ", label
                 self.ax.plot(points[0], points[1], points[2],label = label)
-
+            self.ax.legend()
             plt.show()
         else:
             print "Invalid Value is set in x y z"
@@ -107,6 +107,10 @@ class SearchOptimizedFittedArm:
     def base_solver(self, target_line):
         tmp_search_origin_pos = np.array(self.search_origin_pos)
         result_points = [self.search_origin_pos]
+
+        #we want the arm which is as far from other arm as possible
+        vector_evaluate_bias = np.array([0,0,0])
+
         for num in range(len(self.link_length_array)):
             diff_vector = np.array(target_line[0]) - tmp_search_origin_pos
             euclid_dist_min = float("inf")
@@ -116,14 +120,18 @@ class SearchOptimizedFittedArm:
             for i in range(len(target_line)):
                 diff_vector = np.array(target_line[i]) - tmp_search_origin_pos
                 diff_vector_norm = abs(np.linalg.norm(diff_vector, ord=1) - self.link_length_array[num])
+
+                #add the bias which is calculated from vector inner product
+                diff_vector_norm -= np.dot(diff_vector, vector_evaluate_bias)
                 if diff_vector_norm < euclid_dist_min:
                     dist_min_index = i
                     euclid_dist_min = diff_vector_norm
 
             #set the next search origin_pos
-            print "target_line[i] and i : ", target_line[dist_min_index], "    ",i," minumum value = ",euclid_dist_min 
+            print "target_line[i] and i : ", target_line[dist_min_index], "    ",i," minumum value = ",euclid_dist_min
             print "result_points : ",result_points
             result_points += [list(target_line[dist_min_index])]
+            vector_evaluate_bias = target_line[dist_min_index] - tmp_search_origin_pos
             tmp_search_origin_pos = target_line[dist_min_index]
         return result_points
 
@@ -132,7 +140,7 @@ if __name__ == "__main__":
     test_bone_convert.set_pos(test_x, test_y, test_z)
     test_bone_convert.calc_interpolation()
 
-    test_search = SearchOptimizedFittedArm([0,0,0], [3,4,3,5,6,4])
+    test_search = SearchOptimizedFittedArm([0,0,0], [3,4,3,2,3,4,2,4])
     get_approx_result = test_search.solve(test_bone_convert.get_spline_result().T)
 
     print "get_approx_result : ",np.array(get_approx_result).T
