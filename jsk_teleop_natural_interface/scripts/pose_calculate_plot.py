@@ -69,23 +69,28 @@ class RandomArmGenerator:
         print "                  max_length = ",max_length
 
     def generate_arm_length_array(self, link_num):
+        #minus the min_length from arm_length
         depriving_length = self.arm_length - link_num * self.min_length
         print "depriving_length = ",depriving_length
         print "        link_num = ",link_num
+
+        #separate the array between 0 and max_length - min_length
         separate_result = self.split_array(depriving_length, link_num)
+
+        #add the min_length
         generated_arm_length_array = map(lambda x: x+self.min_length, separate_result)
-        print generated_arm_length_array
+        #shuffle the list
         random.shuffle(generated_arm_length_array)
-        print generated_arm_length_array
         return generated_arm_length_array
 
     def split_array(self, all_length, link_num):
         arm_length_array = []
         for i in range(0, link_num):
             rest_length = all_length - sum(arm_length_array)
-            if rest_length  > 0:
+            if rest_length == 0:
                 new_link_length = random.randrange(0, self.max_length, 1)
-                if new_link_length < rest_length:
+                #whether there are enough remained length or not
+                if new_link_length <= rest_length:
                     arm_length_array += [new_link_length]
                 else:
                     arm_length_array += [rest_length]
@@ -108,10 +113,6 @@ class SearchOptimizedFittedArm:
         if mode == 1:
             return self.base_solver(target_line)
         elif mode == 2:
-            # if types.FunctionType != type(target_line):
-            #     print "Set spline_function solve(target_line, spline_function)"
-            #     return None
-            # else:
             return self.base_spline_solver(target_line)
         else:
             print "Invalid Mode Setted!!!"
@@ -120,16 +121,20 @@ class SearchOptimizedFittedArm:
         tmp_search_origin_pos = np.array(self.search_origin_pos)
         result_points = [self.search_origin_pos]
 
-        #we want the arm which is as far from other arm as possible
+        #we want the arm which is as far from previous arm as possible
         vector_evaluate_bias = np.array([0,0,0])
 
         for link_length in self.link_length_array:
+            #get the diff vector from the origin to the target pos
             diff_vector = np.array(target_line[0]) - tmp_search_origin_pos
             euclid_dist_min = float("inf")
-
             dist_min_index = -1
+
+            #search the target_line pos which is nearest to the link_length
             for i in range(len(target_line)):
                 diff_vector = np.array(target_line[i]) - tmp_search_origin_pos
+
+                #get the norm of the diff_vector and get the diffrence between diff_vector and link_length
                 diff_vector_norm = abs(np.linalg.norm(diff_vector, ord=1) - link_length)
 
                 #add the bias which is calculated from vector inner product
@@ -139,8 +144,10 @@ class SearchOptimizedFittedArm:
                     euclid_dist_min = diff_vector_norm
 
             #set the next search origin_pos
-            print "target_line[i] and i : ", target_line[dist_min_index], "    ",dist_min_index," minumum value = ",euclid_dist_min
+            # print "target_line[i] and i : ", target_line[dist_min_index], "    ",dist_min_index," minumum value = ",euclid_dist_min
             #            print "result_points : ",result_points
+
+            #update INFOS
             result_points += [list(target_line[dist_min_index])]
             vector_evaluate_bias = target_line[dist_min_index] - tmp_search_origin_pos
             tmp_search_origin_pos = target_line[dist_min_index]
@@ -157,12 +164,17 @@ class SearchOptimizedFittedArm:
             prev_length = link_length
 
             for t_value in np.linspace(spline_t_value, len(spline_function.x)-1, 1000*(float(len(spline_function.x)-1) - spline_t_value)):
+                #get the diff vector from the origin to the target pos
                 diff_vector = np.array(spline_function(t_value)) - tmp_search_origin_pos
+                #get the norm of the diff_vector and get the diffrence between diff_vector and link_length
                 diff_vector_norm = abs(np.linalg.norm(diff_vector, ord=1) - link_length)
 
                 # print "t_vale: ",t_value, " diff_vector_norm : ",diff_vector_norm," prev_length : ", prev_length
                 euclid_dist_min = min(diff_vector_norm, euclid_dist_min)
 
+                # when the minumum distanfce is under the threshold
+                # and when the distance become bigger than the previous one,
+                #break the loop and go to the next search
                 if prev_length < diff_vector_norm and euclid_dist_min < self.threshold_spline:
                     spline_t_value = t_value
                     result_points += [list(spline_function(t_value))]
