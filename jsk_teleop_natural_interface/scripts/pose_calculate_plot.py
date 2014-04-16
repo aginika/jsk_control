@@ -16,7 +16,7 @@ class BoneToCurve:
         self.ax = Axes3D(self.fig)
         plt.result_title = "Bone And Curve"
         self.spline_result = None
-
+        self.option_plot_dict_array={}
     def set_pos(self, x, y, z):
         self.x = x
         self.y = y
@@ -32,12 +32,25 @@ class BoneToCurve:
     def get_spline_result(self):
         return self.spline_result
 
+    def register_option_plot_line(self, label, points):
+        self.option_plot_dict_array[label] = points
+
     def plot(self):
         if(len(self.x) > 0 and len(self.y) > 0 and len(self.z) > 0
            and len(self.x) == len(self.y) == len(self.z)):
+            #Bone Line
             self.ax.plot(self.x, self.y, self.z, label="Bone Line")
+
+            #draw spline_result
             if(self.spline_result != None):
+                print "plot : Spline Result"
                 self.ax.plot(self.spline_result[0], self.spline_result[1], self.spline_result[2], label="Spline Result")
+
+            #draw option  line
+            for label,points in self.option_plot_dict_array.items():
+                print "plot : ", label
+                self.ax.plot(points[0], points[1], points[2],label = label)
+
             plt.show()
         else:
             print "Invalid Value is set in x y z"
@@ -77,8 +90,51 @@ class RandomArmGenerator:
         return arm_length_array
 
 
+class SearchOptimizedFittedArm:
+    def __init__(self,search_origin_pos,link_length_array):
+        self.search_origin_pos = search_origin_pos
+        self.link_length_array = link_length_array
+        print "Init SearchOptimizedFitted Arm with"
+        print "             search_origin_pos : ",self.search_origin_pos
+        print "             link_length_array : ",self.link_length_array
+
+    def solve(self, target_line, mode = 1):
+        if mode == 1:
+            return self.base_solver(target_line)
+        else:
+            print "Invalid Mode Setted!!!"
+
+    def base_solver(self, target_line):
+        tmp_search_origin_pos = np.array(self.search_origin_pos)
+        result_points = [self.search_origin_pos]
+        for num in range(len(self.link_length_array)):
+            diff_vector = np.array(target_line[0]) - tmp_search_origin_pos
+            euclid_dist_min = float("inf")
+
+            dist_min_index = -1
+            print "link_length_list : ", self.link_length_array[num]
+            for i in range(len(target_line)):
+                diff_vector = np.array(target_line[i]) - tmp_search_origin_pos
+                diff_vector_norm = abs(np.linalg.norm(diff_vector, ord=1) - self.link_length_array[num])
+                if diff_vector_norm < euclid_dist_min:
+                    dist_min_index = i
+                    euclid_dist_min = diff_vector_norm
+
+            #set the next search origin_pos
+            print "target_line[i] and i : ", target_line[dist_min_index], "    ",i," minumum value = ",euclid_dist_min 
+            print "result_points : ",result_points
+            result_points += [list(target_line[dist_min_index])]
+            tmp_search_origin_pos = target_line[dist_min_index]
+        return result_points
+
 if __name__ == "__main__":
     test_bone_convert = BoneToCurve()
     test_bone_convert.set_pos(test_x, test_y, test_z)
     test_bone_convert.calc_interpolation()
+
+    test_search = SearchOptimizedFittedArm([0,0,0], [3,4,3,5,6,4])
+    get_approx_result = test_search.solve(test_bone_convert.get_spline_result().T)
+
+    print "get_approx_result : ",np.array(get_approx_result).T
+    test_bone_convert.register_option_plot_line("approx_result", np.array(get_approx_result).T)
     test_bone_convert.plot()
